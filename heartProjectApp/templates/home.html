@@ -1,0 +1,181 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>HeartApp Project &#128151;&#128151;&#128151;</title>
+      <link rel="icon" type="image/x-icon" href="../static/heartProjectApp/home-images/favicon.ico">
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap"
+         rel="stylesheet">
+      <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+      <!-- Link to your CSS file -->
+      <link rel="stylesheet" href="{% static 'heartProjectApp/css/styles.css' %}">
+   </head>
+   <body>
+      <nav>
+         <ul>
+            <li><a href="#selection-wrapper">Visualizations</a></li>
+            <li><a href="#heart-disease-form">Heart Disease Form</a></li>
+            <li><a href="#choropleth-map-section">State Map of Heart Disease</a></li>
+         </ul>
+      </nav>
+      <div id="selection-wrapper">
+         <p class="selection-opener">Explore the effects of different variables on heart disease:</p>
+         <div id="button-section">
+            <button class="selection-button" onclick="loadImages('sex')">
+            Sex</button>
+            <button class="selection-button" onclick="loadImages('race')">
+            Race</button>
+            <button class="selection-button" onclick="loadImages('sleep')">
+            Sleep</button>
+            <button class="selection-button" onclick="loadImages('depression')">
+            Depression</button>
+            <button class="selection-button" onclick="loadImages('diabetes')">
+            Diabetes</button>
+            <button class="selection-button" onclick="loadImages('cigarettes')">
+            Cigarettes</button>
+            <button class="selection-button" onclick="loadImages('ecigarettes')">
+            E-cigarettes</button>
+            <button class="selection-button" onclick="loadImages('chest')">
+            Chest Scan</button>
+            <button class="selection-button" onclick="loadImages('age')">
+            Age</button>
+            <button class="selection-button" onclick="loadImages('bmi')">
+            BMI</button>
+            <button class="selection-button" onclick="loadImages('alcohol')">
+            Alcohol Consumption</button>
+            <button class="selection-button" onclick="loadImages('hiv')">
+            HIV</button>
+            <button class="selection-button" onclick="loadImages('covid')">
+            Covid Status</button>
+            <button class="selection-button" onclick="loadImages('sleep')">
+            Sleep</button>
+            <button class="selection-button" onclick="loadImages('activity')">
+            Physical Activity</button>
+            <button class="selection-button" onclick="loadImages('copd')">
+            COPD</button>
+            <button class="selection-button" onclick="loadImages('corr')">
+            Correlation Map</button>
+            <button class="selection-button" onclick="loadImages('race-data')">
+            Race Data</button>
+         </div>
+         <div id="loading-indicator">
+            <img src="{% static 'heartProjectApp/home-images/loading.gif' %}" alt="Loading...">
+        </div>
+        
+         <div id="image-section" class="image-shower" style="display: none;">
+            {% for image in images %}
+            <img src="{{ image.url }}" alt="{{ image.title }}">
+            {% endfor %}
+         </div>
+      </div>
+      <div class="form-wrapper" id="heart-disease-form">
+         <p class="form-title">Find out your chance of having heart disease</p>
+         <p class="form-text">Fill out the form below and click 'Submit' to see your results!</p>
+         <form id="heartDiseaseForm" method="post" action="{% url 'home' %}">
+            {% csrf_token %}
+            {{ form }}
+            <button class="form-submit-btn" type="submit">Submit</button>
+         </form>
+         <div id="form-results">
+            {% if logistic_regression_results %}
+            <h2>Results:</h2>
+            <p>{{ logistic_regression_results }}</p>
+            {% endif %}
+         </div>
+      </div>
+      <div id="choropleth-map-section">
+         {{ choropleth_map|safe }}
+      </div>
+      <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+      <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
+      <script>
+        function loadImages(category) {
+                 $.ajax({
+                     url: `/heartProjectApp/display_images/${category}/`,
+                     method: 'GET',
+                     success: function (data) {
+                        // Hide loading 
+                        $('#loading-indicator').hide();
+                         // Fade out the current image
+                        $('#image-section').fadeOut(400, function () {
+                        // Fade in the new image
+                        $(this).html(data).fadeIn(400);
+                         });
+                     },
+                     //Error handling
+                     error: function (xhr, status, error) {
+                         console.error('Error fetching images:', error);
+                         alert('Error fetching images. Please try again.');
+                     }
+                 });
+             }
+         $(document).ready(function () {
+            //Show loading
+            $('#loading-indicator').show();
+             //Function for selective image loading by category
+             
+             // Call loadImages with the default category on page load
+             loadImages('sex');
+         
+             // Initialize popovers
+             $('[data-toggle="popover"]').popover({
+                 html: true
+             });
+         
+             // Close popovers when clicking outside
+             $(document).on('click', function (e) {
+                 $('[data-toggle="popover"]').each(function () {
+                     if (!$(this).is(e.target) &&
+                         $(this).has(e.target).length === 0 &&
+                         $('.popover').has(e.target).length === 0) {
+                         $(this).popover('hide');
+                     }
+                 });
+             });
+         
+             //Heart disease form submit code
+             $('#heartDiseaseForm').submit(function (event) {
+                 // Prevent default form submission
+                 event.preventDefault();
+         
+                 // Serialize form data
+                 var formData = $(this).serialize();
+         
+                 // Submit the form using AJAX
+                 $.ajax({
+                     url: $(this).attr('action'),
+                     method: 'POST',
+                     data: formData,
+                     dataType: 'json', 
+                     success: function (data) {
+                         // Update the corresponding element with the results
+                         $('#form-results').html('<h2>Results:</h2><p>' + data.logistic_regression_results + '</p>');
+                     },
+         
+                     error: function (xhr, status, error) {
+                         // Error handling
+                         console.error('Error submitting form:', error);
+                     }
+                 });
+             });
+             //Smooth scroll animation
+             $('a[href^="#"]').on('click', function (event) {
+                 event.preventDefault();
+         
+                 var target = $(this.getAttribute('href'));
+         
+                 if (target.length) {
+                     $('html, body').stop().animate({
+                         scrollTop: target.offset().top
+                     }, 1000);
+                 }
+             });
+         });
+      </script>
+   </body>
+</html>
